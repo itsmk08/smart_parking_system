@@ -1,12 +1,12 @@
 import cv2
 import time
 import os
-import json
 from datetime import datetime
 from ultralytics import YOLO
 import easyocr
 import numpy as np
 import re
+from pymongo import MongoClient
 
 sensor_triggered = True
 
@@ -112,62 +112,49 @@ def run_ocr_on_plate(cropped_image_path):
         print(f"Could not read image: {cropped_image_path}")
         return ""
 
-    # Preprocessing for better OCR (optional)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.bilateralFilter(gray, 11, 17, 17)
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # Initialize EasyOCR reader (for English and Nepali)
     reader = easyocr.Reader(['en', 'ne'], gpu=False)
-
-    # EasyOCR works best on RGB images
     rgb_img = cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
 
     results = reader.readtext(rgb_img, detail=0, paragraph=True)
 
-    # Join all detected text parts and clean up
     text = " ".join(results).strip()
-
     print(f"\nDetected Text: {text}")
     return text
 
-# Step 4: Save OCR result to JSON (entry/exit check)
-def save_to_json(text, image_path):
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+# Step 4: Save data to MongoDB (entry/exit check)
+def save_to_mongodb(text, image_path):
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["smart_parking"]
+    entry_collection = db["entryVehicle"]
+    exit_collection = db["exitVehicle"]
 
-    # Create entry and exit folders
-    entry_dir = os.path.join(base_dir, "entry_json")
-    exit_dir = os.path.join(base_dir, "exit_json")
-    os.makedirs(entry_dir, exist_ok=True)
-    os.makedirs(exit_dir, exist_ok=True)
+    cleaned_text = re.sub(r'\W+', '', text.upper())
 
-    # Clean the detected text for filename
-    safe_filename = re.sub(r'\W+', '_', text.strip())
-    if not safe_filename:
-        safe_filename = "unknown_plate"
-
-    filename = f"{safe_filename}.json"
-
-    # Prepare JSON data
-    json_data = {
+    data = {
         "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         "image": os.path.basename(image_path),
-        "detected_text": text
+        "detected_text": cleaned_text
     }
 
-    # Check and save accordingly
-    entry_path = os.path.join(entry_dir, filename)
-    exit_path = os.path.join(exit_dir, filename)
-
-    if os.path.exists(entry_path):
-        with open(exit_path, 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
-        print(f"JSON already exists in entry. Saved to exit: {exit_path}")
+    if entry_collection.find_one({"detected_text": cleaned_text}):
+        # Move to exit
+        exit_collection.insert_one(data)
+        print(f"Plate '{cleaned_text}' found in entry. Inserted into exitVehicle.")
+        entry_collection.delete_many({"detected_text": cleaned_text})
+    elif exit_collection.find_one({"detected_text": cleaned_text}):
+        # Move back to entry
+        entry_collection.insert_one(data)
+        print(f"Plate '{cleaned_text}' found in exit. Inserted into entryVehicle.")
+        exit_collection.delete_many({"detected_text": cleaned_text})
     else:
-        with open(entry_path, 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
-        print(f"JSON saved in entry: {entry_path}")
+        # New plate → add to entry
+        entry_collection.insert_one(data)
+        print(f"New plate '{cleaned_text}' inserted into entryVehicle.")
 
 # Main Logic
 if __name__ == "__main__":
@@ -187,6 +174,10 @@ if __name__ == "__main__":
             print(f"Frame saved: {labeled_frame_path}")
             print(f"Cropped plate saved: {cropped_plate_path}")
             detected_text = run_ocr_on_plate(cropped_plate_path)
-            save_to_json(detected_text, cropped_plate_path)
+
+            if detected_text and detected_text.strip():
+                save_to_mongodb(detected_text, cropped_plate_path)
+            else:
+                print("⚠️ Image is not clear.")
         else:
-            print("No license plate detected.")
+            print("🚫 No license plate detected.")
