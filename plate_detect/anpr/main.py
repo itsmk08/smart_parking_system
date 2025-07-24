@@ -4,10 +4,9 @@ import os
 import json
 from datetime import datetime
 from ultralytics import YOLO
-import pytesseract
-
-# Set Tesseract path
-pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files/Tesseract-OCR/tesseract.exe'
+import easyocr
+import numpy as np
+import re
 
 sensor_triggered = True
 
@@ -106,50 +105,71 @@ def analyze_and_annotate(video_path, yolo_model_path, save_dir="labeled_frame"):
 
     return None, None
 
-# Step 3: Run OCR on the cropped plate image
+# Step 3: Run OCR on the cropped plate image using EasyOCR
 def run_ocr_on_plate(cropped_image_path):
     image = cv2.imread(cropped_image_path)
     if image is None:
         print(f"Could not read image: {cropped_image_path}")
         return ""
 
+    # Preprocessing for better OCR (optional)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.bilateralFilter(gray, 11, 17, 17)
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
-    gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    text = pytesseract.image_to_string(gray, lang='eng+nep')
-    
-    # Clean up the text: remove line breaks and unwanted characters
-    text = text.replace('\n', ' ').replace('\r', '').strip()
-    text = text.replace('(', '').replace(')', '').replace(',', '').replace(']', '') \
-               .replace('.', '').replace('&', '').replace('|', '')
-    
+    # Initialize EasyOCR reader (for English and Nepali)
+    reader = easyocr.Reader(['en', 'ne'], gpu=False)
+
+    # EasyOCR works best on RGB images
+    rgb_img = cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
+
+    results = reader.readtext(rgb_img, detail=0, paragraph=True)
+
+    # Join all detected text parts and clean up
+    text = " ".join(results).strip()
+
     print(f"\nDetected Text: {text}")
     return text
 
-
-# Step 4: Save OCR result to JSON
+# Step 4: Save OCR result to JSON (entry/exit check)
 def save_to_json(text, image_path):
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    json_dir = os.path.join(base_dir, "json")
-    os.makedirs(json_dir, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # Create entry and exit folders
+    entry_dir = os.path.join(base_dir, "entry_json")
+    exit_dir = os.path.join(base_dir, "exit_json")
+    os.makedirs(entry_dir, exist_ok=True)
+    os.makedirs(exit_dir, exist_ok=True)
+
+    # Clean the detected text for filename
+    safe_filename = re.sub(r'\W+', '_', text.strip())
+    if not safe_filename:
+        safe_filename = "unknown_plate"
+
+    filename = f"{safe_filename}.json"
+
+    # Prepare JSON data
     json_data = {
-        "timestamp": timestamp,
+        "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         "image": os.path.basename(image_path),
-        "detected_text": text  # Now this is flattened (no \n)
+        "detected_text": text
     }
 
-    json_path = os.path.join(json_dir, f"plate_{timestamp}.json")
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(json_data, f, ensure_ascii=False, indent=4)
+    # Check and save accordingly
+    entry_path = os.path.join(entry_dir, filename)
+    exit_path = os.path.join(exit_dir, filename)
 
-    print(f"JSON saved: {json_path}")
+    if os.path.exists(entry_path):
+        with open(exit_path, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
+        print(f"JSON already exists in entry. Saved to exit: {exit_path}")
+    else:
+        with open(entry_path, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
+        print(f"JSON saved in entry: {entry_path}")
 
-
-# Main
+# Main Logic
 if __name__ == "__main__":
     if sensor_triggered:
         base_dir = os.path.dirname(os.path.abspath(__file__))
