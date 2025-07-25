@@ -129,32 +129,49 @@ def run_ocr_on_plate(cropped_image_path):
 # Step 4: Save data to MongoDB (entry/exit check)
 def save_to_mongodb(text, image_path):
     client = MongoClient("mongodb://localhost:27017/")
-    db = client["smart_parking"]
-    entry_collection = db["entryVehicle"]
-    exit_collection = db["exitVehicle"]
+    db = client["SVP"]
+    all_collection = db["allvehicles"]
+    entry_collection = db["entryvehicles"]
+    exit_collection = db["exitvehicles"]
 
     cleaned_text = re.sub(r'\W+', '', text.upper())
+    current_time = datetime.now()
+    image_name = os.path.basename(image_path)
 
-    data = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
-        "image": os.path.basename(image_path),
-        "detected_text": cleaned_text
-    }
+    # Check if vehicle is already parked in allvehicles
+    existing_entry = all_collection.find_one({"licensePlate": cleaned_text, "status": "parked"})
 
-    if entry_collection.find_one({"detected_text": cleaned_text}):
-        # Move to exit
-        exit_collection.insert_one(data)
-        print(f"Plate '{cleaned_text}' found in entry. Inserted into exitVehicle.")
-        entry_collection.delete_many({"detected_text": cleaned_text})
-    elif exit_collection.find_one({"detected_text": cleaned_text}):
-        # Move back to entry
+    if not existing_entry:
+        # Add new parked record to allvehicles and entryvehicles
+        data = {
+            "licensePlate": cleaned_text,
+            "entryTime": current_time,
+            "image": image_name,
+            "status": "parked"
+        }
+        all_collection.insert_one(data)
         entry_collection.insert_one(data)
-        print(f"Plate '{cleaned_text}' found in exit. Inserted into entryVehicle.")
-        exit_collection.delete_many({"detected_text": cleaned_text})
+        print(f"New plate '{cleaned_text}' inserted into allvehicles and entryvehicles as parked.")
     else:
-        # New plate → add to entry
-        entry_collection.insert_one(data)
-        print(f"New plate '{cleaned_text}' inserted into entryVehicle.")
+        # Vehicle is already parked, treat as exit
+        entry_time = existing_entry["entryTime"]
+        exit_time = current_time
+        duration_minutes = int((exit_time - entry_time).total_seconds() // 60) or 1
+        fare = duration_minutes * 0.8
+        exit_data = {
+            "licensePlate": cleaned_text,
+            "entryTime": entry_time,
+            "exitTime": exit_time,
+            "duration": duration_minutes,
+            "fare": fare,
+            "image": image_name,
+            "status": "exited"
+        }
+        exit_collection.insert_one(exit_data)
+        # all_collection.delete_one({"_id": existing_entry["_id"]})  # Do not delete from allvehicles
+        entry_collection.delete_many({"licensePlate": cleaned_text})
+        print(f"Plate '{cleaned_text}' exited. Duration: {duration_minutes} min, Fare: Rs {fare}.")
+
 
 # Main Logic
 if __name__ == "__main__":
