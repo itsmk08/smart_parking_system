@@ -13,7 +13,7 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -27,15 +27,16 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">exitVehicles Table ({vehicles.length} records)</h3>
-          <div className="text-sm text-gray-500">Last updated: {new Date().toLocaleTimeString()}</div>
+          
+          <div className="text-sm text-gray-700 font-bold text-lg">Last updated: {new Date().toLocaleTimeString()}</div>
+          </div>
         </div>
 
         {vehicles.length === 0 ? (
@@ -50,101 +51,99 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">License Plate</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Entry Time</th>
+                  <th className="py-3 px-4 font-medium text-gray-900">Entry Date</th>
+                  <th className="py-3 px-4 font-medium text-gray-900">Entry Time</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Date</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Time</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Duration</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Amount</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Entry Image</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Image</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Fare (Rs.)</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {vehicles.map((vehicle, index) => {
-                  let durationDisplay = "N/A"
-                  if (vehicle.entryTime && vehicle.exitTime) {
-                    const entryTime = new Date(vehicle.entryTime)
-                    const exitTime = new Date(vehicle.exitTime)
-                    let durationMs = exitTime - entryTime
-                    let totalMinutes = Math.floor(durationMs / (1000 * 60))
-                    if (totalMinutes < 0) totalMinutes = 0
-                    const hours = Math.floor(totalMinutes / 60)
-                    const minutes = totalMinutes % 60
-                    if (hours > 0) {
-                      durationDisplay = `${hours}h ${minutes}m`
-                    } else {
-                      durationDisplay = `${minutes}m`
-                    }
+                  const isParked = vehicle.status === 'parked';
+
+                  const entry = new Date(vehicle.entryTime);
+                  const exit = vehicle.exitTime ? new Date(vehicle.exitTime) : null;
+
+                  // Calculate and format duration
+                  let durationFormatted = '-';
+                  if (!isParked && entry && exit) {
+                    const totalMinutes = Math.ceil((exit - entry) / (1000 * 60));
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    durationFormatted = `${hours}h ${minutes}m`;
                   }
+
                   return (
-                  <tr key={vehicle._id || index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">
-                      <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                        {vehicle.licensePlate || "N/A"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      {vehicle.entryTime ? (
-                        <div>
-                          <div>{new Date(vehicle.entryTime).toLocaleDateString()}</div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(vehicle.entryTime).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      {vehicle.exitTime ? (
-                        <div>
-                          <div>{new Date(vehicle.exitTime).toLocaleDateString()}</div>
-                          <div className="text-xs text-gray-500">{new Date(vehicle.exitTime).toLocaleTimeString()}</div>
-                        </div>
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{durationDisplay}</td>
-                    <td className="py-3 px-4 font-medium text-green-600">
-                      ${vehicle.amount ? vehicle.amount.toFixed(2) : "0.00"}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      {vehicle.entryImageUrl ? (
-                        <a
-                          href={vehicle.entryImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm"
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-medium">{vehicle.licensePlate}</td>
+
+                      <td className="py-3 px-4 text-gray-600">
+                        {vehicle.entryTime
+                          ? entry.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' })
+                          : '-'}
+                      </td>
+
+                      <td className="py-3 px-4 text-gray-600">
+                        {vehicle.entryTime
+                          ? entry.toLocaleTimeString('en-US', {
+                              hour12: true,
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              timeZone: 'Asia/Kathmandu',
+                            })
+                          : '-'}
+                      </td>
+
+                      <td className="py-3 px-4 text-gray-600">
+                        {isParked || !exit
+                          ? '-'
+                          : exit.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' })}
+                      </td>
+
+                      <td className="py-3 px-4 text-gray-600">
+                        {isParked || !exit
+                          ? '-'
+                          : exit.toLocaleTimeString('en-US', {
+                              hour12: true,
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              timeZone: 'Asia/Kathmandu',
+                            })}
+                      </td>
+
+                      <td className="py-3 px-4 text-gray-600">{durationFormatted}</td>
+
+                      <td className="py-3 px-4 font-medium">
+                        {isParked
+                          ? '-'
+                          : `Rs. ${(vehicle.fare ?? vehicle.amount ?? 0).toFixed(2)}`}
+                      </td>
+
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            isParked
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
                         >
-                          🖼️ View
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No Image</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      {vehicle.exitImageUrl ? (
-                        <a
-                          href={vehicle.exitImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          🖼️ View
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No Image</span>
-                      )}
-                    </td>
-                  </tr>
-                )})}
+                          {isParked ? 'Parked' : 'Exited'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
-    </div>
-  )
-}
+  );
+};
 
-export default ExitedVehiclesTable
+export default ExitedVehiclesTable;

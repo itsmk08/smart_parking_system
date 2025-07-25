@@ -49,7 +49,6 @@ const Login = () => {
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Smart Parking System</h1>
-          <p className="text-gray-600 mt-2">Intelligent parking management solution</p>
         </div>
 
         <div className="bg-white p-8 rounded-lg shadow-md">
@@ -114,10 +113,7 @@ const Login = () => {
             </p>
           </div>
 
-          <div className="mt-4 text-center text-xs text-gray-500">
-            <p>Demo credentials:</p>
-            <p>Email: user@smartparking.com | Password: user123</p>
-          </div>
+          
         </div>
       </div>
     </div>

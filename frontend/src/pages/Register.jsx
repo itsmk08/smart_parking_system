@@ -24,16 +24,27 @@ const Register = () => {
     setLoading(true)
     setError("")
 
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
+    const { email, password, confirmPassword } = formData
+
+    // Passwords match check
+    if (password !== confirmPassword) {
       setError("Passwords do not match")
       setLoading(false)
       return
     }
 
-    // Validate password strength
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long")
+    // Password validation: min 8 chars, 1 uppercase, 1 digit, 1 special char
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/
+    if (!passwordRegex.test(password)) {
+      setError("Password must be at least 8 characters long, contain 1 uppercase letter, 1 digit, and 1 special character")
+      setLoading(false)
+      return
+    }
+
+    // Email validation: 3 letters before @, 3 between @ and ., 3 after .
+    const emailRegex = /^[a-zA-Z]{3,}@[a-zA-Z]{3,}\.[a-zA-Z]{3,}$/
+    if (!emailRegex.test(email)) {
+      setError("Email must have at least 3 letters before @, 3 between @ and ., and 3 after .")
       setLoading(false)
       return
     }
@@ -41,13 +52,13 @@ const Register = () => {
     const result = await register({
       firstName: formData.firstName,
       lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
+      email,
+      password,
       role: formData.role,
     })
 
     if (result.success) {
-      navigate("/verify-email", { state: { email: formData.email } })
+      navigate("/verify-email", { state: { email } })
     } else {
       setError(result.message)
     }
@@ -74,7 +85,11 @@ const Register = () => {
           <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>}
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -89,7 +104,7 @@ const Register = () => {
                   onChange={handleChange}
                   required
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="John"
+                  placeholder="Gaurav"
                 />
               </div>
 
@@ -105,7 +120,7 @@ const Register = () => {
                   onChange={handleChange}
                   required
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Doe"
+                  placeholder="Shrestha"
                 />
               </div>
             </div>
@@ -122,7 +137,7 @@ const Register = () => {
                 onChange={handleChange}
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="john@example.com"
+                placeholder="gaurav@gmail.com"
               />
             </div>
 
@@ -137,8 +152,6 @@ const Register = () => {
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="viewer">Viewer</option>
-                <option value="operator">Operator</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

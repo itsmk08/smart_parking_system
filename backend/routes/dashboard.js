@@ -2,6 +2,8 @@ const express = require("express")
 const EntryVehicle = require("../models/EntryVehicle")
 const ExitVehicle = require("../models/ExitVehicle")
 const authenticateToken = require("../middleware/auth")
+const mongoose = require("mongoose");
+
 
 const router = express.Router()
 
@@ -17,13 +19,6 @@ router.get("/stats", authenticateToken, async (req, res) => {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    // Get today's entries
-    const todayEntries = await EntryVehicle.countDocuments({
-      entryTime: {
-        $gte: today,
-        $lt: tomorrow,
-      },
-    })
 
     // Get today's exits
     const todayExits = await ExitVehicle.countDocuments({
@@ -51,7 +46,14 @@ router.get("/stats", authenticateToken, async (req, res) => {
       },
     ])
 
-    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0
+    let totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+    if (totalRevenue === 0) {
+      // Fallback: fetch from exitvehicles table
+      const fallbackRevenue = await ExitVehicle.aggregate([
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]);
+      totalRevenue = fallbackRevenue.length > 0 ? fallbackRevenue[0].total : 0;
+    }
 
     // Get vehicle type distribution
     const vehicleTypes = await EntryVehicle.aggregate([
@@ -61,7 +63,6 @@ router.get("/stats", authenticateToken, async (req, res) => {
 
     res.json({
       totalParked,
-      todayEntries,
       todayExits,
       totalRevenue: Number.parseFloat(totalRevenue.toFixed(2)),
       vehicleTypes,
@@ -74,5 +75,73 @@ router.get("/stats", authenticateToken, async (req, res) => {
     })
   }
 })
+
+// Get daily entry counts from allvehicles
+router.get("/daily-entries", authenticateToken, async (req, res) => {
+  try {
+    const mongooseDb = require("mongoose").connection.db;
+    const dailyCounts = await mongooseDb.collection("allvehicles").aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$entryTime" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]).toArray();
+    // Map to { date, count }
+    const result = dailyCounts.map(row => ({ date: row._id, count: row.count }));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch daily entries", error: error.message });
+  }
+});
+
+router.get("/daily-exits", authenticateToken, async (req, res) => {
+  try {
+    const mongooseDb = require("mongoose").connection.db;
+    const dailyCounts = await mongooseDb.collection("exitvehicles").aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$exitTime" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]).toArray();
+    // Map to { date, count }
+    const result = dailyCounts.map(row => ({ date: row._id, count: row.count }));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch daily exits", error: error.message });
+  }
+});
+
+// Get daily revenue from exitvehicles
+router.get("/daily-revenue", authenticateToken, async (req, res) => {
+  try {
+    const mongooseDb = require("mongoose").connection.db;
+    const dailyRevenue = await mongooseDb.collection("exitvehicles").aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$exitTime" }
+          },
+          total: { $sum: { $ifNull: ["$fare", "$amount"] } }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]).toArray();
+    // Map to { date, total }
+    const result = dailyRevenue.map(row => ({ date: row._id, total: row.total }));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch daily revenue", error: error.message });
+  }
+});
 
 module.exports = router

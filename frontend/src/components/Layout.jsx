@@ -79,8 +79,8 @@ const Layout = ({ children }) => {
                 onClick={handleLogout}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 hover:text-gray-700 focus:outline-none transition"
               >
-                <span className="mr-2">🚪</span>
-                <span className="hidden sm:block">Logout</span>
+
+                <span className="hidden sm:block text-lg border-black rounded-lg pr-2 pl-2 bg-red-600 text-white">Logout</span>
               </button>
             </div>
           </div>

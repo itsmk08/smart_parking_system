@@ -23,7 +23,7 @@ const StatsCards = ({ stats, loading }) => {
     },
     {
       title: "Today's Revenue",
-      value: `$${stats.totalRevenue.toFixed(2)}`,
+      value: `Rs. ${stats.totalRevenue.toFixed(2)}`,
       icon: "💰",
       color: "text-purple-600",
       bgColor: "bg-purple-100",

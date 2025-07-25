@@ -127,7 +127,7 @@ def run_ocr_on_plate(cropped_image_path):
     return text
 
 # Step 4: Save data to MongoDB (entry/exit check)
-def save_to_mongodb(text, image_path):
+def save_to_mongodb(text):
     client = MongoClient("mongodb://localhost:27017/")
     db = client["SVP"]
     all_collection = db["allvehicles"]
@@ -136,7 +136,6 @@ def save_to_mongodb(text, image_path):
 
     cleaned_text = re.sub(r'\W+', '', text.upper())
     current_time = datetime.now()
-    image_name = os.path.basename(image_path)
 
     # Check if vehicle is already parked in allvehicles
     existing_entry = all_collection.find_one({"licensePlate": cleaned_text, "status": "parked"})
@@ -146,7 +145,6 @@ def save_to_mongodb(text, image_path):
         data = {
             "licensePlate": cleaned_text,
             "entryTime": current_time,
-            "image": image_name,
             "status": "parked"
         }
         all_collection.insert_one(data)
@@ -157,17 +155,18 @@ def save_to_mongodb(text, image_path):
         entry_time = existing_entry["entryTime"]
         exit_time = current_time
         duration_minutes = int((exit_time - entry_time).total_seconds() // 60) or 1
-        fare = duration_minutes * 0.8
+        fare = duration_minutes * 1.2
         exit_data = {
             "licensePlate": cleaned_text,
             "entryTime": entry_time,
             "exitTime": exit_time,
             "duration": duration_minutes,
             "fare": fare,
-            "image": image_name,
             "status": "exited"
         }
         exit_collection.insert_one(exit_data)
+        # Update status in allvehicles to 'exited'
+        all_collection.update_one({"licensePlate": cleaned_text, "status": "parked"}, {"$set": {"status": "exited"}})
         # all_collection.delete_one({"_id": existing_entry["_id"]})  # Do not delete from allvehicles
         entry_collection.delete_many({"licensePlate": cleaned_text})
         print(f"Plate '{cleaned_text}' exited. Duration: {duration_minutes} min, Fare: Rs {fare}.")
@@ -193,7 +192,7 @@ if __name__ == "__main__":
             detected_text = run_ocr_on_plate(cropped_plate_path)
 
             if detected_text and detected_text.strip():
-                save_to_mongodb(detected_text, cropped_plate_path)
+                save_to_mongodb(detected_text)
             else:
                 print("⚠️ Image is not clear.")
         else:

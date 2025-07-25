@@ -10,71 +10,86 @@ const router = express.Router()
 // Get parked vehicles
 router.get("/parked", authenticateToken, async (req, res) => {
   try {
-    const vehicles = await EntryVehicle.find({ status: "parked" }).sort({ entryTime: -1 })
+    const vehicles = await EntryVehicle.find({ status: "parked" }).sort({ entryTime: -1 });
 
-    // Calculate duration for each vehicle
+    const currentTime = new Date();
     const vehiclesWithDuration = vehicles.map((vehicle) => {
-      const entryTime = new Date(vehicle.entryTime)
-      const currentTime = new Date()
-      const durationMs = currentTime - entryTime
-      const hours = Math.floor(durationMs / (1000 * 60 * 60))
-      const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
-
+      const entryTime = new Date(vehicle.entryTime);
+      const durationMs = currentTime - entryTime;
+      const totalMinutes = Math.floor(durationMs / (1000 * 60));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
       return {
-        ...vehicle.toObject(),
-        duration: `${hours}h ${minutes}m`,
-      }
-    })
+        licensePlate: vehicle.licensePlate,
+        entryTime: vehicle.entryTime,
+        status: vehicle.status,
+        duration: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`,
+      };
+    });
 
-    res.json(vehiclesWithDuration)
+    res.json(vehiclesWithDuration);
   } catch (error) {
-    console.error("Error fetching parked vehicles:", error)
+    console.error("Error fetching parked vehicles:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
-    })
+    });
   }
-})
+});
 
 // Get parking history
 router.get("/history", authenticateToken, async (req, res) => {
   try {
-    const exitedVehicles = await ExitVehicle.find().sort({ exitTime: -1 })
-    const parkedVehicles = await AllVehicle.find({ status: "parked" })
-    // Format parked vehicles as active history records
+    const exitedVehicles = await ExitVehicle.find().sort({ exitTime: -1 });
+    const parkedVehicles = await AllVehicle.find({ status: "parked" });
+    const currentTime = new Date();
+
+    // 🟢 Format parked vehicles (still inside)
     const activeRecords = parkedVehicles.map((vehicle) => {
-      const entryTime = new Date(vehicle.entryTime)
-      const currentTime = new Date()
-      const durationMs = currentTime - entryTime
-      const totalMinutes = Math.ceil(durationMs / (1000 * 60))
-      const fare = totalMinutes * 0.8
+      const entryTime = new Date(vehicle.entryTime);
+      const durationMs = currentTime - entryTime;
+      const totalMinutes = Math.ceil(durationMs / (1000 * 60));
+      const amount = totalMinutes * 1.2;
+
       return {
         licensePlate: vehicle.licensePlate,
         entryTime: vehicle.entryTime,
         exitTime: null,
         duration: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
-        fare: fare,
+        amount: parseFloat(amount.toFixed(2)),
         status: "parked",
-        image: vehicle.image,
-      }
-    })
-    // Format exited vehicles
-    const exitedRecords = exitedVehicles.map((vehicle) => ({
-      licensePlate: vehicle.licensePlate,
-      entryTime: vehicle.entryTime,
-      exitTime: vehicle.exitTime,
-      duration: vehicle.duration,
-      fare: vehicle.amount,
-      status: "exited",
-      image: vehicle.image,
-    }))
-    const allHistory = [...exitedRecords, ...activeRecords]
-    res.json(allHistory)
+      };
+    });
+
+    // 🟢 Format exited vehicles (already left)
+    const exitedRecords = exitedVehicles.map((vehicle) => {
+      const entryTime = new Date(vehicle.entryTime);
+      const exitTime = new Date(vehicle.exitTime);
+      const totalMinutes = Math.ceil((exitTime - entryTime) / (1000 * 60));
+      const fallbackAmount = totalMinutes * 1.2;
+
+      return {
+        licensePlate: vehicle.licensePlate || "N/A",
+        entryTime: vehicle.entryTime,
+        exitTime: vehicle.exitTime,
+        duration: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
+        amount: vehicle.fare
+          ? parseFloat(vehicle.fare.toFixed(2))
+          : vehicle.amount
+          ? parseFloat(vehicle.amount.toFixed(2))
+          : parseFloat(fallbackAmount.toFixed(2)),
+        status: vehicle.status || "exited",
+      };
+    });
+
+    const allHistory = [...exitedRecords, ...activeRecords];
+    res.json(allHistory);
   } catch (error) {
-    console.error("Error fetching history:", error)
-    res.status(500).json({ success: false, message: "Server error" })
+    console.error("Error fetching history:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-})
+});
+
 
 // Get recent entries
 router.get("/recent-entries", authenticateToken, async (req, res) => {
@@ -94,7 +109,7 @@ router.get("/recent-entries", authenticateToken, async (req, res) => {
 // Get recent exits
 router.get("/recent-exits", authenticateToken, async (req, res) => {
   try {
-    const recentExits = await ExitVehicle.find().sort({ exitTime: -1 }).limit(5)
+    const recentExits = await ExitVehicle.find().sort({ exitTime: -1 }).limit(10)
 
     res.json(recentExits)
   } catch (error) {
@@ -109,7 +124,7 @@ router.get("/recent-exits", authenticateToken, async (req, res) => {
 // Add vehicle entry (for IoT integration)
 router.post("/entry", async (req, res) => {
   try {
-    const { licensePlate, imageUrl } = req.body
+    const { licensePlate } = req.body
     if (!licensePlate || licensePlate.length < 3) {
       return res.status(400).json({ success: false, message: "Invalid license plate" })
     }
@@ -119,7 +134,6 @@ router.post("/entry", async (req, res) => {
         licensePlate: licensePlate.toUpperCase(),
         entryTime: new Date(),
         status: "parked",
-        image: imageUrl,
       })
       await newVehicle.save()
       return res.json({ success: true, message: "Vehicle entry recorded successfully", data: newVehicle })
@@ -128,7 +142,7 @@ router.post("/entry", async (req, res) => {
       const exitTime = new Date()
       const durationMs = exitTime - entryTime
       const totalMinutes = Math.ceil(durationMs / (1000 * 60))
-      const fare = totalMinutes * 0.8
+      const fare = totalMinutes * 1;
       const vehicleExit = new ExitVehicle({
         licensePlate: existingEntry.licensePlate,
         entryTime: existingEntry.entryTime,
@@ -136,7 +150,6 @@ router.post("/entry", async (req, res) => {
         duration: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
         totalMinutes,
         amount: fare,
-        image: imageUrl,
         status: "exited"
       })
       await vehicleExit.save()
@@ -152,7 +165,7 @@ router.post("/entry", async (req, res) => {
 // Add vehicle exit (for IoT integration)
 router.post("/exit", async (req, res) => {
   try {
-    const { licensePlate, cameraId, imageUrl, confidence } = req.body
+    const { licensePlate} = req.body
 
     // Validate license plate
     if (!licensePlate || licensePlate.length < 3) {
@@ -185,9 +198,7 @@ router.post("/exit", async (req, res) => {
     const duration = `${hours}h ${minutes}m`
 
     // Calculate billing amount
-    const billingRates = { Car: 5.0, SUV: 6.0, Motorcycle: 3.0, Truck: 8.0 }
-    const hourlyRate = billingRates[entryRecord.vehicleType] || 5.0
-    const amount = Math.max(1, Math.ceil(totalMinutes / 60)) * hourlyRate // Minimum 1 hour
+    const amount = totalMinutes * 1.2;
 
     // Create exit record
     const vehicleExit = new ExitVehicle({
@@ -197,11 +208,6 @@ router.post("/exit", async (req, res) => {
       duration,
       totalMinutes,
       amount,
-      vehicleType: entryRecord.vehicleType,
-      cameraId: cameraId || entryRecord.cameraId,
-      entryImageUrl: entryRecord.imageUrl,
-      exitImageUrl: imageUrl,
-      confidence: confidence || 0.8,
     })
 
     await vehicleExit.save()
@@ -221,7 +227,6 @@ router.post("/exit", async (req, res) => {
           exitTime,
           duration,
           amount,
-          vehicleType: entryRecord.vehicleType,
         },
       },
     })
@@ -254,7 +259,6 @@ router.get("/all-entries", authenticateToken, async (req, res) => {
       status: entry.status || "parked",
       duration: typeof entry.duration === 'number' ? entry.duration : null,
       amount: typeof entry.fare === 'number' ? entry.fare : 0,
-      imageUrl: entry.image || null,
       _id: entry._id
     }));
 
@@ -314,58 +318,16 @@ router.get("/all-entries", authenticateToken, async (req, res) => {
 })
 
 // Get all exit vehicles from exitVehicles table using same database connection
+// Get all exited vehicles from exitVehicles collection
 router.get("/all-exits", authenticateToken, async (req, res) => {
   try {
-    console.log("🔍 Fetching exits from exitvehicles table...")
-
-    // Use the existing mongoose connection to access exitVehicles collection
-    const db = mongoose.connection.db
-
-    console.log("📊 Querying exitvehicles collection...");
-    const allExitsRaw = await db.collection("exitvehicles").find({}).sort({ exit_timestamp: -1 }).toArray();
-
-    // Map raw data to frontend schema
-    const allExits = allExitsRaw.map(exit => ({
-      licensePlate: exit.detected_text || "N/A",
-      entryTime: exit.entry_timestamp || null,
-      exitTime: exit.exit_timestamp || null,
-      duration: exit.duration || null,
-      amount: typeof exit.amount === 'number' ? exit.amount : 0,
-      vehicleType: exit.vehicleType || "Unknown",
-      cameraId: exit.cameraId || "N/A",
-      confidence: typeof exit.confidence === 'number' ? exit.confidence : 1,
-      entryImageUrl: exit.image_entry || null,
-      exitImageUrl: exit.image_exit || null,
-      totalMinutes: exit.totalMinutes || 0,
-      _id: exit._id
-    }));
-
-    console.log(`📈 Found ${allExits.length} records in exitvehicles collection`)
-
-    res.json({
-      success: true,
-      data: allExits,
-      metadata: {
-        count: allExits.length,
-        database: mongoose.connection.name,
-        collection: "exitvehicles",
-        timestamp: new Date().toISOString(),
-      },
-    })
+    const exitedVehicles = await ExitVehicle.find().sort({ exitTime: -1 });
+    res.json({ success: true, data: exitedVehicles });
   } catch (error) {
-    console.error("❌ Error fetching exits from exitvehicles table:", error)
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch data from exitvehicles table",
-      error: error.message,
-      details: {
-        database: mongoose.connection.name,
-        collection: "exitvehicles",
-        timestamp: new Date().toISOString(),
-      },
-    })
+    console.error("Error fetching all exits:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
-})
+});
 
 // Test endpoint to check database connection and collections
 router.get("/test-connection", authenticateToken, async (req, res) => {
@@ -413,5 +375,29 @@ router.get("/test-connection", authenticateToken, async (req, res) => {
     })
   }
 })
+
+
+// Get daily entry counts from allvehicles
+router.get("/daily-entries", authenticateToken, async (req, res) => {
+  try {
+    const mongooseDb = require("mongoose").connection.db;
+    const dailyCounts = await mongooseDb.collection("allvehicles").aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$entryTime" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]).toArray();
+    // Map to { date, count }
+    const result = dailyCounts.map(row => ({ date: row._id, count: row.count }));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch daily entries", error: error.message });
+  }
+});
 
 module.exports = router

@@ -1,4 +1,13 @@
+import { useEffect, useState } from "react";
+
 const VehicleTable = ({ vehicles, loading }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000); // update every minute
+    return () => clearInterval(interval);
+  }, []);
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow">
@@ -13,7 +22,7 @@ const VehicleTable = ({ vehicles, loading }) => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -29,28 +38,31 @@ const VehicleTable = ({ vehicles, loading }) => {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">License Plate</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Entry Date</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Entry Time</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Image</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Duration</th>
+                  
                 </tr>
               </thead>
               <tbody>
                 {vehicles.map((vehicle, index) => {
-                  let currentDuration = "0m"
+                  let currentDuration = "0m";
+                  let currentCharge = 0;
+                  let totalMinutes = 0;
                   if (vehicle.entryTime) {
-                    const entryTime = new Date(vehicle.entryTime)
-                    const currentTime = new Date()
-                    let durationMs = currentTime - entryTime
-                    let totalMinutes = Math.floor(durationMs / (1000 * 60))
-                    if (totalMinutes < 0) totalMinutes = 0
-                    const hours = Math.floor(totalMinutes / 60)
-                    const minutes = totalMinutes % 60
+                    const entryTime = new Date(vehicle.entryTime);
+                    const currentTime = new Date(now);
+                    let durationMs = currentTime - entryTime;
+                    totalMinutes = Math.floor(durationMs / (1000 * 60));
+                    if (totalMinutes < 0) totalMinutes = 0;
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
                     if (hours > 0) {
-                      currentDuration = `${hours}h ${minutes}m`
+                      currentDuration = `${hours}h ${minutes}m`;
                     } else {
-                      currentDuration = `${minutes}m`
+                      currentDuration = `${minutes}m`;
                     }
+                    currentCharge = totalMinutes * 1; // Rs. 1 per minute
                   }
                   return (
                     <tr key={vehicle._id || index} className="border-b border-gray-100 hover:bg-gray-50">
@@ -59,16 +71,9 @@ const VehicleTable = ({ vehicles, loading }) => {
                           {vehicle.licensePlate || "N/A"}
                         </span>
                       </td>
+                      <td className="py-3 px-4 text-gray-600">{vehicle.entryTime ? new Date(vehicle.entryTime).toISOString().slice(0,10) : ''}</td>
+                      <td className="py-3 px-4 text-gray-600">{vehicle.entryTime ? new Date(vehicle.entryTime).toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'UTC' }) : ''}</td>
                       <td className="py-3 px-4 text-gray-600">
-                        {vehicle.entryTime ? (
-                          <div className="text-xs text-gray-500">
-                            {new Date(vehicle.entryTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kathmandu' })}
-                          </div>
-                        ) : (
-                          "N/A"
-                        )}
-                      </td>
-                    <td className="py-3 px-4">
                         <span
                           className={`px-2 py-1 text-xs rounded-full ${
                             vehicle.status === "parked"
@@ -83,30 +88,9 @@ const VehicleTable = ({ vehicles, loading }) => {
                             : vehicle.status === "exited"
                               ? "🔴 Exited"
                               : vehicle.status || "Unknown"}
-                      </span>
-                    </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {vehicle.image ? (
-                          <a
-                            href={vehicle.image}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
-                          >
-                            🖼️ View
-                          </a>
-                        ) : (
-                          <span className="text-gray-400 text-sm">No Image</span>
-                        )}
+                        </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {vehicle.status === "parked" ? (
-                          <span className="text-green-600 font-medium">{currentDuration}</span>
-                        ) : (
-                          <span className="text-gray-500">Completed</span>
-                        )}
-                    </td>
-                  </tr>
+                      </tr>
                   )
                 })}
               </tbody>
@@ -115,7 +99,7 @@ const VehicleTable = ({ vehicles, loading }) => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default VehicleTable
+export default VehicleTable;
