@@ -19,7 +19,7 @@ const adminSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "operator", "viewer"],
+      enum: ["admin"],
       default: "admin",
     },
     isVerified: {

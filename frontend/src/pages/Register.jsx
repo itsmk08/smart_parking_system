@@ -41,13 +41,7 @@ const Register = () => {
       return
     }
 
-    // Email validation: 3 letters before @, 3 between @ and ., 3 after .
-    const emailRegex = /^[a-zA-Z]{3,}@[a-zA-Z]{3,}\.[a-zA-Z]{3,}$/
-    if (!emailRegex.test(email)) {
-      setError("Email must have at least 3 letters before @, 3 between @ and ., and 3 after .")
-      setLoading(false)
-      return
-    }
+
 
     const result = await register({
       firstName: formData.firstName,

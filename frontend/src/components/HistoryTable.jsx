@@ -38,7 +38,7 @@ const HistoryTable = ({ history, loading }) => {
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Date</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Time</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Duration</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Fare (Rs.)</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Fare</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
                 </tr>
               </thead>

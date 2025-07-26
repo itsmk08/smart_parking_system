@@ -5,7 +5,6 @@ import Layout from "../components/Layout"
 import StatsCards from "../components/StatsCards"
 import RecentActivity from "../components/RecentActivity"
 import api from "../services/api"
-import DailyEntriesTable from "../components/DailyEntriesTable";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -37,8 +36,8 @@ const Dashboard = () => {
       setStats(prev => ({
         ...prev,
         totalParked: response.data.totalParked,
-        vehicleTypes: response.data.vehicleTypes,
-        // Do NOT set totalRevenue here!
+        vehicleTypes: response.data.vehicleTypes
+
       }))
     } catch (error) {
       console.error("Error fetching stats:", error)

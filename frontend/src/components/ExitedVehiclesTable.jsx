@@ -34,8 +34,8 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
-          
-          <div className="text-sm text-gray-700 font-bold text-lg">Last updated: {new Date().toLocaleTimeString()}</div>
+          <div className="text-sm text-gray-700 font-bold text-lg">
+            Last updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
 
@@ -56,18 +56,16 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Date</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Exit Time</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Duration</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Fare (Rs.)</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Fare</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {vehicles.map((vehicle, index) => {
                   const isParked = vehicle.status === 'parked';
-
                   const entry = new Date(vehicle.entryTime);
                   const exit = vehicle.exitTime ? new Date(vehicle.exitTime) : null;
 
-                  // Calculate and format duration
                   let durationFormatted = '-';
                   if (!isParked && entry && exit) {
                     const totalMinutes = Math.ceil((exit - entry) / (1000 * 60));
@@ -82,7 +80,7 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
 
                       <td className="py-3 px-4 text-gray-600">
                         {vehicle.entryTime
-                          ? entry.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' })
+                          ? entry.toLocaleDateString('en-CA', { timeZone: 'UTC' })
                           : '-'}
                       </td>
 
@@ -93,7 +91,7 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
                               hour: 'numeric',
                               minute: '2-digit',
                               second: '2-digit',
-                              timeZone: 'Asia/Kathmandu',
+                              timeZone: 'UTC',
                             })
                           : '-'}
                       </td>
@@ -101,7 +99,7 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
                       <td className="py-3 px-4 text-gray-600">
                         {isParked || !exit
                           ? '-'
-                          : exit.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' })}
+                          : exit.toLocaleDateString('en-CA', { timeZone: 'UTC' })}
                       </td>
 
                       <td className="py-3 px-4 text-gray-600">
@@ -112,7 +110,7 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
                               hour: 'numeric',
                               minute: '2-digit',
                               second: '2-digit',
-                              timeZone: 'Asia/Kathmandu',
+                              timeZone: 'UTC',
                             })}
                       </td>
 
@@ -143,6 +141,7 @@ const ExitedVehiclesTable = ({ vehicles, loading, error }) => {
           </div>
         )}
       </div>
+    </div>
   );
 };
 

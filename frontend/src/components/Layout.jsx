@@ -70,9 +70,7 @@ const Layout = ({ children }) => {
                   </p>
                   <p className="text-gray-500 text-xs">{user?.email}</p>
                 </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                  {user?.role}
-                </span>
+                
               </div>
 
               <button
