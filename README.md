@@ -2,6 +2,37 @@
 
 A comprehensive IoT-based smart parking system with camera-based license plate detection, automatic gate control, and billing management.
 
+## Tools & Technologies Used
+
+### Backend
+- **Node.js** & **Express.js**: RESTful API server
+- **MongoDB** & **Mongoose**: Database and ODM
+- **JWT**: Authentication
+- **Nodemailer**: Email notifications
+- **bcryptjs**: Password hashing
+- **dotenv**: Environment variable management
+- **CORS**: Cross-origin resource sharing
+
+### Frontend
+- **React** (Vite): UI development
+- **React Router**: Routing
+- **Axios**: API requests
+- **Radix UI**: Advanced UI components
+- **Tailwind CSS**: Utility-first CSS framework
+- **PostCSS**: CSS processing
+
+### AI & Plate Detection
+- **Python** (OpenCV, pytesseract, ultralytics): License plate recognition
+
+### Configuration & Tooling
+- **TypeScript**: Type safety (Next.js app)
+- **Next.js**: SSR/SSG for dashboard
+- **ESLint**: Linting
+- **Nodemon**: Development server
+- **Date-fns**: Date utilities
+
+---
+
 ## Project Structure
 
 \`\`\`
@@ -268,7 +299,3 @@ Ensure these are set in production:
 3. Add tests for new features
 4. Update documentation as needed
 5. Submit pull requests for review
-
-## License
-
-This project is licensed under the MIT License.
