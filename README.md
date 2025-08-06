@@ -35,7 +35,7 @@ A comprehensive IoT-based smart parking system with camera-based license plate d
 
 ## Project Structure
 
-\`\`\`
+```
 smart-parking-system/
 ├── backend/                 # Node.js Express Server
 │   ├── models/             # MongoDB Models
@@ -50,7 +50,7 @@ smart-parking-system/
     │   ├── context/        # React Context
     │   └── services/       # API Services
     └── public/
-\`\`\`
+```
 
 ## Features
 
