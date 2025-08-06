@@ -75,7 +75,7 @@ smart-parking-system/
 ### 🏗 **Database Collections**
 
 #### EntryVehicle Collection
-\`\`\`javascript
+```javascript
 {
   licensePlate: String,
   entryTime: Date,
@@ -84,10 +84,10 @@ smart-parking-system/
   imageUrl: String,
   status: String
 }
-\`\`\`
+```
 
 #### ExitVehicle Collection
-\`\`\`javascript
+```javascript
 {
   licensePlate: String,
   entryTime: Date,
@@ -97,60 +97,55 @@ smart-parking-system/
   amount: Number,
   vehicleType: String
 }
-\`\`\`
+```
 
 ## Installation & Setup
 
 ### Backend Setup
 
 1. **Navigate to backend directory**
-   \`\`\`bash
+   ```bash
    cd backend
-   \`\`\`
+   ```
 
 2. **Install dependencies**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. **Configure environment variables**
-   \`\`\`bash
+   ```bash
    cp .env.example .env
    # Edit .env with your MongoDB URI and JWT secret
-   \`\`\`
+   ```
 
-4. **Seed the database**
-   \`\`\`bash
-   npm run seed
-   \`\`\`
-
-5. **Start the server**
-   \`\`\`bash
+4. **Start the server**
+   ```bash
    npm run dev
-   \`\`\`
+   ```
 
 ### Frontend Setup
 
 1. **Navigate to frontend directory**
-   \`\`\`bash
+   ```bash
    cd frontend
-   \`\`\`
+   ```
 
 2. **Install dependencies**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. **Configure environment variables**
-   \`\`\`bash
+   ```bash
    cp .env.example .env
    # Edit .env with your API URL
-   \`\`\`
+   ```
 
 4. **Start the development server**
-   \`\`\`bash
+   ```bash
    npm start
-   \`\`\`
+   ```
 
 ## API Endpoints
 
@@ -175,7 +170,7 @@ smart-parking-system/
 ### For Hardware Team (Arduino/Camera Integration)
 
 #### Vehicle Entry Endpoint
-\`\`\`javascript
+```javascript
 POST /api/vehicles/entry
 Content-Type: application/json
 
@@ -185,10 +180,10 @@ Content-Type: application/json
   "cameraId": "CAM001",
   "imageUrl": "optional_image_url"
 }
-\`\`\`
+```
 
 #### Vehicle Exit Endpoint
-\`\`\`javascript
+```javascript
 POST /api/vehicles/exit
 Content-Type: application/json
 
@@ -197,10 +192,10 @@ Content-Type: application/json
   "cameraId": "CAM001",
   "imageUrl": "optional_image_url"
 }
-\`\`\`
+```
 
 ### Response Format
-\`\`\`javascript
+```javascript
 {
   "success": true,
   "message": "Vehicle entry recorded successfully",
@@ -211,7 +206,7 @@ Content-Type: application/json
     "status": "parked"
   }
 }
-\`\`\`
+```
 
 ## Billing Configuration
 
@@ -251,18 +246,18 @@ Content-Type: application/json
 ## Development Commands
 
 ### Backend
-\`\`\`bash
+```bash
 npm run dev      # Start development server with nodemon
 npm start        # Start production server
 npm run seed     # Seed database with sample data
-\`\`\`
+```
 
 ### Frontend
-\`\`\`bash
+```bash
 npm start        # Start development server
 npm run build    # Build for production
 npm test         # Run tests
-\`\`\`
+```
 
 ## Production Deployment
 
